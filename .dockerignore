@@ -1,0 +1,11 @@
+.git
+.github
+.env
+.env.*
+secrets/
+data/
+config/
+transcode/
+.tmp/
+*.log
+README.md

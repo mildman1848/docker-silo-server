@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Expand LSIO-style FILE__ environment variables in the current shell.
+# Source this file from scripts that need the expanded variables.
+set -euo pipefail
+
+while IFS='=' read -r file_var file_path; do
+    var_name="${file_var#FILE__}"
+    if [ -z "${var_name}" ] || [ "${var_name}" = "${file_var}" ]; then
+        continue
+    fi
+    if [ -z "${file_path}" ]; then
+        echo "[file-env] ${file_var} is set but empty" >&2
+        return 1 2>/dev/null || exit 1
+    fi
+    if [ ! -r "${file_path}" ]; then
+        echo "[file-env] ${file_var} points to unreadable file: ${file_path}" >&2
+        return 1 2>/dev/null || exit 1
+    fi
+    export "${var_name}=$(tr -d '\r\n' < "${file_path}")"
+    unset "${file_var}"
+    echo "[file-env] loaded ${var_name} from ${file_var}"
+done < <(env | grep '^FILE__' || true)

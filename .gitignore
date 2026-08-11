@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+secrets/
+data/
+config/
+transcode/
+.tmp/
+*.log
+__pycache__/
+*.py[cod]
+.DS_Store

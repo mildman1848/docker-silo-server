@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    restart: unless-stopped
+    shm_size: ${POSTGRES_SHM_SIZE:-2gb}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-silo}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: ${POSTGRES_DB:-silo}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql
+    secrets:
+      - postgres_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-silo}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  silo:
+    image: ${IMAGE_NAME:-ghcr.io/mildman1848/silo-server}:${IMAGE_TAG:-git-881c968-mldm1}
+    restart: unless-stopped
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Europe/Berlin}
+      MODE: ${MODE:-integrated}
+      FILE__SECRET_KEY: /run/secrets/silo_secret_key
+      FILE__POSTGRES_PASSWORD: /run/secrets/postgres_password
+      SILO_DB_HOST: postgres
+      SILO_DB_PORT: "5432"
+      SILO_DB_NAME: ${POSTGRES_DB:-silo}
+      SILO_DB_USER: ${POSTGRES_USER:-silo}
+      SILO_DB_SSLMODE: disable
+      REDIS_URL: redis://redis:6379
+      SILO_PLUGIN_CACHE_DIR: /config/plugins
+      POSTGRES_TUNE: ${POSTGRES_TUNE:-auto}
+      SILO_PUBLIC_URL: ${SILO_PUBLIC_URL:-}
+      SILO_TRUSTED_PROXIES: ${SILO_TRUSTED_PROXIES:-}
+    ports:
+      - "${PORT:-8090}:8080"
+      - "${JF_PORT:-8096}:8096"
+      - "${ABS_PORT:-13378}:13378"
+    volumes:
+      - ./config:/config
+      - ./transcode:/transcode
+      - ${MEDIA_ROOT:?Set MEDIA_ROOT in .env to the host media path}:/media:ro
+      - /proc/meminfo:/host/proc/meminfo:ro
+    devices:
+      - /dev/dri:/dev/dri
+    secrets:
+      - silo_secret_key
+      - postgres_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+secrets:
+  silo_secret_key:
+    file: ${SECRET_KEY_FILE:-./secrets/silo_secret_key}
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:-./secrets/postgres_password}

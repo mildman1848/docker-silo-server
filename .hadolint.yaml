@@ -1,0 +1,5 @@
+ignored:
+  # Debian/Jellyfin repository package versions are intentionally resolved at build time.
+  - DL3008
+  # The upstream/LSIO-compatible RUN pipeline is guarded by set -eux and curl -fsSL.
+  - DL4006

@@ -1,0 +1,37 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+set -euo pipefail
+
+echo "[init-silo-config] preparing persistent directories"
+
+mkdir -p /config/plugins /config/compat /config/audiobook-covers /config/userdb /transcode /var/lib/silo
+chown -R abc:abc /config /transcode
+
+link_dir() {
+    local target="$1"
+    local source="$2"
+    mkdir -p "${source}"
+    if [ -L "${target}" ]; then
+        ln -sfn "${source}" "${target}"
+        return
+    fi
+    if [ -e "${target}" ]; then
+        if [ -d "${target}" ] && [ -z "$(find "${target}" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
+            rmdir "${target}"
+        else
+            echo "[init-silo-config] ${target} exists and is not empty; leaving it in place" >&2
+            return
+        fi
+    fi
+    ln -sfn "${source}" "${target}"
+}
+
+link_dir /var/lib/silo/plugins /config/plugins
+link_dir /var/lib/silo/compat /config/compat
+link_dir /var/lib/silo/audiobook-covers /config/audiobook-covers
+link_dir /var/lib/silo/userdb /config/userdb
+link_dir /tmp/silo-transcode /transcode
+
+if [ -z "${SECRET_KEY:-}" ] && [ -z "${FILE__SECRET_KEY:-}" ]; then
+    echo "[init-silo-config] warning: SECRET_KEY/FILE__SECRET_KEY not set yet; start-silo will fail clearly" >&2
+fi

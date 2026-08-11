@@ -1,0 +1,40 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+set -euo pipefail
+
+. /usr/local/bin/file-env
+
+: "${MODE:=integrated}"
+: "${PORT:=8080}"
+: "${SILO_PLUGIN_CACHE_DIR:=/config/plugins}"
+: "${SILO_DB_HOST:=postgres}"
+: "${SILO_DB_PORT:=5432}"
+: "${SILO_DB_NAME:=silo}"
+: "${SILO_DB_USER:=silo}"
+: "${SILO_DB_SSLMODE:=disable}"
+
+if [ -z "${SECRET_KEY:-}" ]; then
+    echo "[silo] SECRET_KEY or FILE__SECRET_KEY is required" >&2
+    exit 1
+fi
+
+if [ -z "${DATABASE_URL:-}" ]; then
+    if [ -z "${POSTGRES_PASSWORD:-}" ]; then
+        echo "[silo] DATABASE_URL is unset and POSTGRES_PASSWORD/FILE__POSTGRES_PASSWORD is missing" >&2
+        exit 1
+    fi
+    DATABASE_URL="postgres://${SILO_DB_USER}:${POSTGRES_PASSWORD}@${SILO_DB_HOST}:${SILO_DB_PORT}/${SILO_DB_NAME}?sslmode=${SILO_DB_SSLMODE}"
+    export DATABASE_URL
+    echo "[silo] built DATABASE_URL from SILO_DB_* and POSTGRES_PASSWORD"
+fi
+
+if [ -z "${REDIS_URL:-}" ]; then
+    echo "[silo] warning: REDIS_URL is unset; most compose deployments should set it" >&2
+fi
+
+mkdir -p /config/plugins /config/compat /config/audiobook-covers /config/userdb /transcode
+chown -R abc:abc /config /transcode
+
+export MODE PORT SILO_PLUGIN_CACHE_DIR
+
+exec s6-setuidgid abc /usr/local/bin/silo
