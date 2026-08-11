@@ -84,7 +84,7 @@ services:
           exit 1
         fi
         export MEILI_MASTER_KEY="\$(cat /run/secrets/meili_master_key)"
-        exec /bin/meilisearch
+        exec /bin/meilisearch --db-path /meili_data/data.ms
     environment:
       MEILI_ENV: production
       MEILI_NO_ANALYTICS: "true"
