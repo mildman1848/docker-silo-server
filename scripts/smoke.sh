@@ -4,6 +4,10 @@ set -euo pipefail
 PROJECT_NAME="${PROJECT_NAME:-silo-smoke}"
 IMAGE_NAME="${IMAGE_NAME:-ghcr.io/mildman1848/silo-server}"
 IMAGE_TAG="${IMAGE_TAG:-git-881c968-mldm1}"
+POSTGRES_IMAGE="${POSTGRES_IMAGE:-ghcr.io/mildman1848/postgresql:18.4-mldm4}"
+CACHE_IMAGE="${CACHE_IMAGE:-ghcr.io/mildman1848/valkey:9.0.4-mldm1}"
+POSTGRES_USER="${POSTGRES_USER:-silo}"
+POSTGRES_DB="${POSTGRES_DB:-silo}"
 SMOKE_DIR="${SMOKE_DIR:-.tmp/smoke}"
 PORT="${SMOKE_PORT:-18090}"
 DOCKER_BIN="${DOCKER:-docker}"
@@ -37,22 +41,33 @@ PY
 cat > "${SMOKE_DIR}/compose.yml" <<YAML
 services:
   postgres:
-    image: pgvector/pgvector:pg18
+    image: ${POSTGRES_IMAGE}
     environment:
-      POSTGRES_USER: silo
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-      POSTGRES_DB: silo
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Europe/Berlin
+      POSTGRES_USER: ${POSTGRES_USER}
+      FILE__POSTGRES_PASSWORD: /run/secrets/postgres_password
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./postgres:/config
     secrets:
       - postgres_password
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U silo"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h 127.0.0.1"]
       interval: 5s
       timeout: 3s
       retries: 20
   redis:
-    image: redis:alpine
+    image: ${CACHE_IMAGE}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Europe/Berlin
+    volumes:
+      - ./valkey:/config
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "valkey-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -67,8 +82,8 @@ services:
       FILE__POSTGRES_PASSWORD: /run/secrets/postgres_password
       SILO_DB_HOST: postgres
       SILO_DB_PORT: "5432"
-      SILO_DB_NAME: silo
-      SILO_DB_USER: silo
+      SILO_DB_NAME: ${POSTGRES_DB}
+      SILO_DB_USER: ${POSTGRES_USER}
       SILO_DB_SSLMODE: disable
       REDIS_URL: redis://redis:6379
       SILO_PLUGIN_CACHE_DIR: /config/plugins

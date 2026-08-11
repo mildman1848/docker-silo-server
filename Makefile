@@ -3,11 +3,15 @@ SHELL := /bin/bash
 .SHELLFLAGS := -euo pipefail -c
 
 IMAGE_NAME ?= ghcr.io/mildman1848/silo-server
+POSTGRES_IMAGE ?= ghcr.io/mildman1848/postgresql:18.4-mldm4
+CACHE_IMAGE ?= ghcr.io/mildman1848/valkey:9.0.4-mldm1
 UPSTREAM_REPO ?= https://github.com/Silo-Server/silo-server.git
 UPSTREAM_REF ?= 881c96864bafec423f91438059b21b84a6f68686
 APP_VERSION ?= git-881c968
 IMAGE_REVISION ?= mldm1
 VERSION ?= $(APP_VERSION)-$(IMAGE_REVISION)
+POSTGRES_USER ?= silo
+POSTGRES_DB ?= silo
 LSIO_BASE_VERSION ?= bookworm
 DOCKER ?= docker
 PLATFORM ?= linux/amd64
@@ -18,6 +22,10 @@ info: version labels
 	@printf 'Upstream: %s\n' '$(UPSTREAM_REPO)'
 	@printf 'Upstream ref: %s\n' '$(UPSTREAM_REF)'
 	@printf 'Image: %s:%s\n' '$(IMAGE_NAME)' '$(VERSION)'
+	@printf 'PostgreSQL user: %s\n' '$(POSTGRES_USER)'
+	@printf 'PostgreSQL database: %s\n' '$(POSTGRES_DB)'
+	@printf 'PostgreSQL image: %s\n' '$(POSTGRES_IMAGE)'
+	@printf 'Cache image: %s\n' '$(CACHE_IMAGE)'
 
 version:
 	@printf '%s\n' '$(VERSION)'
@@ -63,7 +71,7 @@ build:
 		.
 
 smoke: secrets
-	IMAGE_NAME='$(IMAGE_NAME)' IMAGE_TAG='$(VERSION)' DOCKER='$(DOCKER)' ./scripts/smoke.sh
+	IMAGE_NAME='$(IMAGE_NAME)' IMAGE_TAG='$(VERSION)' POSTGRES_IMAGE='$(POSTGRES_IMAGE)' CACHE_IMAGE='$(CACHE_IMAGE)' POSTGRES_USER='$(POSTGRES_USER)' POSTGRES_DB='$(POSTGRES_DB)' DOCKER='$(DOCKER)' ./scripts/smoke.sh
 
 clean-smoke:
 	DOCKER='$(DOCKER)' ./scripts/smoke.sh clean

@@ -1,32 +1,38 @@
 services:
   postgres:
-    image: pgvector/pgvector:pg18
+    image: ${POSTGRES_IMAGE:-ghcr.io/mildman1848/postgresql:18.4-mldm4}
     restart: unless-stopped
-    shm_size: ${POSTGRES_SHM_SIZE:-2gb}
     environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Europe/Berlin}
       POSTGRES_USER: ${POSTGRES_USER:-silo}
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      FILE__POSTGRES_PASSWORD: /run/secrets/postgres_password
       POSTGRES_DB: ${POSTGRES_DB:-silo}
     volumes:
-      - ./data/postgres:/var/lib/postgresql
+      - ./data/postgres:/config
     secrets:
       - postgres_password
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-silo}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-silo} -d $${POSTGRES_DB:-silo} -h 127.0.0.1"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
 
   redis:
-    image: redis:alpine
+    image: ${CACHE_IMAGE:-ghcr.io/mildman1848/valkey:9.0.4-mldm1}
     restart: unless-stopped
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Europe/Berlin}
     volumes:
-      - ./data/redis:/data
+      - ./data/valkey:/config
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "valkey-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
 
   silo:
     image: ${IMAGE_NAME:-ghcr.io/mildman1848/silo-server}:${IMAGE_TAG:-git-881c968-mldm1}
@@ -45,7 +51,7 @@ services:
       SILO_DB_SSLMODE: disable
       REDIS_URL: redis://redis:6379
       SILO_PLUGIN_CACHE_DIR: /config/plugins
-      POSTGRES_TUNE: ${POSTGRES_TUNE:-auto}
+      POSTGRES_TUNE: ${POSTGRES_TUNE:-off}
       SILO_PUBLIC_URL: ${SILO_PUBLIC_URL:-}
       SILO_TRUSTED_PROXIES: ${SILO_TRUSTED_PROXIES:-}
     ports:

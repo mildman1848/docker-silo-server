@@ -35,6 +35,8 @@ This project is **unofficial** and is not affiliated with Silo Media L.L.C. or t
 ## Image design
 
 - Runtime base: `ghcr.io/linuxserver/baseimage-debian:bookworm`
+- Default PostgreSQL image: `ghcr.io/mildman1848/postgresql:18.4-mldm4`
+- Default Redis-protocol cache image: `ghcr.io/mildman1848/valkey:9.0.4-mldm1`
 - s6-overlay v3 supervision
 - LinuxServer.io-style `PUID`, `PGID`, `TZ`
 - `FILE__` secret-file expansion for Docker secrets
@@ -87,10 +89,25 @@ http://localhost:8090
 
 | Variable | Required | Description |
 |---|---:|---|
+| `POSTGRES_IMAGE` | `ghcr.io/mildman1848/postgresql:18.4-mldm4` | PostgreSQL image for the bundled compose example. |
+| `CACHE_IMAGE` | `ghcr.io/mildman1848/valkey:9.0.4-mldm1` | Redis-protocol cache image for the bundled compose example. Service name remains `redis` for app compatibility. |
 | `SECRET_KEY` / `FILE__SECRET_KEY` | yes | Master key for at-rest credential encryption. Back this up separately from DB dumps. Losing it makes encrypted secrets unrecoverable. |
 | `DATABASE_URL` | yes | PostgreSQL connection string. |
 | `REDIS_URL` | recommended | Redis connection string. |
 | `MEDIA_ROOT` | compose only | Host path to media library. |
+
+## Database and cache images
+
+The bundled Compose file prefers this homelab image set:
+
+```text
+POSTGRES_IMAGE=ghcr.io/mildman1848/postgresql:18.4-mldm4
+CACHE_IMAGE=ghcr.io/mildman1848/valkey:9.0.4-mldm1
+```
+
+The cache service is still named `redis` and Silo receives `REDIS_URL=redis://redis:6379`, because Valkey is Redis-protocol compatible and many applications use `redis` as the expected DNS name.
+
+Upstream Silo currently documents PostgreSQL 18 + pgvector. This packaging keeps the image selectable through `POSTGRES_IMAGE` so operators can switch back to `pgvector/pgvector:pg18` if upstream introduces a hard PostgreSQL 18 or pgvector requirement that the custom PostgreSQL 18 image cannot satisfy.
 
 ## Docker secrets / `FILE__` variables
 
