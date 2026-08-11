@@ -1,0 +1,4 @@
+services:
+  silo:
+    devices:
+      - /dev/dri:/dev/dri

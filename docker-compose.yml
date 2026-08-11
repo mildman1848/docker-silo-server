@@ -100,8 +100,6 @@ services:
         bind:
           create_host_path: false
       - /proc/meminfo:/host/proc/meminfo:ro
-    devices:
-      - /dev/dri:/dev/dri
     secrets:
       - silo_secret_key
       - postgres_password

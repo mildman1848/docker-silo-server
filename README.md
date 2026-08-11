@@ -149,7 +149,11 @@ The helper never logs secret values.
 
 ## Hardware acceleration
 
-For Intel/AMD VAAPI/QSV, pass `/dev/dri`:
+For Intel/AMD VAAPI/QSV, use the optional compose override on hosts that actually provide `/dev/dri`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.vaapi.yml up -d
+```
 
 ```yaml
 devices:
