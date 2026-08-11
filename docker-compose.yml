@@ -63,12 +63,42 @@ services:
       - ./transcode:/transcode
       # Media libraries are mounted individually so the Silo admin UI can use
       # stable, explicit container paths per media type. Keep them read-only.
-      - ${MEDIA_MOVIES_PATH:?Set MEDIA_MOVIES_PATH in .env}:/media/movies:ro
-      - ${MEDIA_TV_PATH:?Set MEDIA_TV_PATH in .env}:/media/tv:ro
-      - ${MEDIA_MUSIC_PATH:?Set MEDIA_MUSIC_PATH in .env}:/media/music:ro
-      - ${MEDIA_AUDIOBOOKS_PATH:?Set MEDIA_AUDIOBOOKS_PATH in .env}:/media/audiobooks:ro
-      - ${MEDIA_EBOOKS_PATH:?Set MEDIA_EBOOKS_PATH in .env}:/media/ebooks:ro
-      - ${MEDIA_MANGA_PATH:?Set MEDIA_MANGA_PATH in .env}:/media/manga:ro
+      - type: bind
+        source: ${MEDIA_MOVIES_PATH:?Set MEDIA_MOVIES_PATH in .env}
+        target: /media/movies
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MEDIA_TV_PATH:?Set MEDIA_TV_PATH in .env}
+        target: /media/tv
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MEDIA_MUSIC_PATH:?Set MEDIA_MUSIC_PATH in .env}
+        target: /media/music
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MEDIA_AUDIOBOOKS_PATH:?Set MEDIA_AUDIOBOOKS_PATH in .env}
+        target: /media/audiobooks
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MEDIA_EBOOKS_PATH:?Set MEDIA_EBOOKS_PATH in .env}
+        target: /media/ebooks
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MEDIA_MANGA_PATH:?Set MEDIA_MANGA_PATH in .env}
+        target: /media/manga
+        read_only: true
+        bind:
+          create_host_path: false
       - /proc/meminfo:/host/proc/meminfo:ro
     devices:
       - /dev/dri:/dev/dri
