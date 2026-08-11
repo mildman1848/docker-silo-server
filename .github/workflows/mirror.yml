@@ -1,0 +1,78 @@
+name: Mirror
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Mirror Git repository
+    runs-on: ubuntu-latest
+    if: github.repository == 'mildman1848/docker-silo-server'
+    env:
+      CODEBERG_MIRROR_SSH_KEY: ${{ secrets.CODEBERG_MIRROR_SSH_KEY }}
+      GITLAB_MIRROR_SSH_KEY: ${{ secrets.GITLAB_MIRROR_SSH_KEY }}
+    steps:
+      - name: Skip when mirror SSH keys are absent
+        if: env.CODEBERG_MIRROR_SSH_KEY == '' || env.GITLAB_MIRROR_SSH_KEY == ''
+        run: |
+          echo "Mirror SSH keys are not configured; skipping Git mirror."
+
+      - name: Checkout full history
+        if: env.CODEBERG_MIRROR_SSH_KEY != '' && env.GITLAB_MIRROR_SSH_KEY != ''
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure SSH
+        if: env.CODEBERG_MIRROR_SSH_KEY != '' && env.GITLAB_MIRROR_SSH_KEY != ''
+        run: |
+          set -euo pipefail
+
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${CODEBERG_MIRROR_SSH_KEY}" > ~/.ssh/codeberg_mirror
+          printf '%s\n' "${GITLAB_MIRROR_SSH_KEY}" > ~/.ssh/gitlab_mirror
+          chmod 600 ~/.ssh/codeberg_mirror ~/.ssh/gitlab_mirror
+
+          ssh-keyscan codeberg.org gitlab.com >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+          cat > ~/.ssh/config <<'EOF'
+          Host codeberg-mirror
+            HostName codeberg.org
+            User git
+            IdentityFile ~/.ssh/codeberg_mirror
+            IdentitiesOnly yes
+
+          Host gitlab-mirror
+            HostName gitlab.com
+            User git
+            IdentityFile ~/.ssh/gitlab_mirror
+            IdentitiesOnly yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Mirror main and tags
+        if: env.CODEBERG_MIRROR_SSH_KEY != '' && env.GITLAB_MIRROR_SSH_KEY != ''
+        run: |
+          set -euo pipefail
+
+          git remote add codeberg git@codeberg-mirror:mildman1848/docker-silo-server.git
+          git remote add gitlab git@gitlab-mirror:mildman1848/docker-silo-server.git
+
+          git push codeberg refs/heads/main:refs/heads/main
+          git push gitlab refs/heads/main:refs/heads/main
+
+          git push codeberg --tags
+          git push gitlab --tags

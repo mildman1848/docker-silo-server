@@ -1,0 +1,127 @@
+name: Docker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      push:
+        description: Push image to configured registries
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  security-events: write
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: silo-server
+      UPSTREAM_REF: 881c96864bafec423f91438059b21b84a6f68686
+      APP_VERSION: git-881c968
+      IMAGE_REVISION: mldm1
+      VERSION: git-881c968-mldm1
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      GITLAB_REGISTRY_USER: ${{ secrets.GITLAB_REGISTRY_USER }}
+      GITLAB_REGISTRY_TOKEN: ${{ secrets.GITLAB_REGISTRY_TOKEN }}
+      CODEBERG_REGISTRY_USER: ${{ secrets.CODEBERG_REGISTRY_USER }}
+      CODEBERG_REGISTRY_TOKEN: ${{ secrets.CODEBERG_REGISTRY_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve image targets
+        id: images
+        shell: bash
+        run: |
+          {
+            echo 'images<<EOF'
+            echo "ghcr.io/${GITHUB_REPOSITORY_OWNER}/${IMAGE_NAME}"
+            if [[ -n "${DOCKERHUB_USERNAME}" ]]; then
+              echo "docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
+            fi
+            if [[ -n "${GITLAB_REGISTRY_USER}" ]]; then
+              echo "registry.gitlab.com/${GITHUB_REPOSITORY_OWNER}/${IMAGE_NAME}"
+            fi
+            if [[ -n "${CODEBERG_REGISTRY_USER}" ]]; then
+              echo "codeberg.org/${GITHUB_REPOSITORY_OWNER}/${IMAGE_NAME}"
+            fi
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        if: github.event_name == 'workflow_dispatch' && inputs.push
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Login to Docker Hub
+        if: github.event_name == 'workflow_dispatch' && inputs.push && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitLab Registry
+        if: github.event_name == 'workflow_dispatch' && inputs.push && env.GITLAB_REGISTRY_USER != '' && env.GITLAB_REGISTRY_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          registry: registry.gitlab.com
+          username: ${{ env.GITLAB_REGISTRY_USER }}
+          password: ${{ env.GITLAB_REGISTRY_TOKEN }}
+
+      - name: Login to Codeberg Registry
+        if: github.event_name == 'workflow_dispatch' && inputs.push && env.CODEBERG_REGISTRY_USER != '' && env.CODEBERG_REGISTRY_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          registry: codeberg.org
+          username: ${{ env.CODEBERG_REGISTRY_USER }}
+          password: ${{ env.CODEBERG_REGISTRY_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.images.outputs.images }}
+          tags: |
+            type=raw,value=${{ env.VERSION }}
+            type=raw,value=${{ env.APP_VERSION }}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{ is_default_branch }}
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'workflow_dispatch' && inputs.push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            UPSTREAM_REF=${{ env.UPSTREAM_REF }}
+            APP_VERSION=${{ env.APP_VERSION }}
+            IMAGE_REVISION=${{ env.IMAGE_REVISION }}
+            VERSION=${{ env.VERSION }}
+            VCS_REF=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
