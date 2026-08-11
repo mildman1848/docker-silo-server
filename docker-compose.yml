@@ -61,7 +61,14 @@ services:
     volumes:
       - ./config:/config
       - ./transcode:/transcode
-      - ${MEDIA_ROOT:?Set MEDIA_ROOT in .env to the host media path}:/media:ro
+      # Media libraries are mounted individually so the Silo admin UI can use
+      # stable, explicit container paths per media type. Keep them read-only.
+      - ${MEDIA_MOVIES_PATH:?Set MEDIA_MOVIES_PATH in .env}:/media/movies:ro
+      - ${MEDIA_TV_PATH:?Set MEDIA_TV_PATH in .env}:/media/tv:ro
+      - ${MEDIA_MUSIC_PATH:?Set MEDIA_MUSIC_PATH in .env}:/media/music:ro
+      - ${MEDIA_AUDIOBOOKS_PATH:?Set MEDIA_AUDIOBOOKS_PATH in .env}:/media/audiobooks:ro
+      - ${MEDIA_EBOOKS_PATH:?Set MEDIA_EBOOKS_PATH in .env}:/media/ebooks:ro
+      - ${MEDIA_MANGA_PATH:?Set MEDIA_MANGA_PATH in .env}:/media/manga:ro
       - /proc/meminfo:/host/proc/meminfo:ro
     devices:
       - /dev/dri:/dev/dri

@@ -10,6 +10,7 @@ POSTGRES_USER="${POSTGRES_USER:-silo}"
 POSTGRES_DB="${POSTGRES_DB:-silo}"
 SMOKE_DIR="${SMOKE_DIR:-.tmp/smoke}"
 PORT="${SMOKE_PORT:-18090}"
+BIND="${SMOKE_BIND:-127.0.0.1}"
 DOCKER_BIN="${DOCKER:-docker}"
 
 if [ "${1:-}" = "clean" ]; then
@@ -89,7 +90,7 @@ services:
       SILO_PLUGIN_CACHE_DIR: /config/plugins
       POSTGRES_TUNE: off
     ports:
-      - "127.0.0.1:${PORT}:8080"
+      - "${BIND}:${PORT}:8080"
     volumes:
       - ./config:/config
       - ./transcode:/transcode

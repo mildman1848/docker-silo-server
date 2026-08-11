@@ -52,7 +52,12 @@ lint: compose-config
 compose-config:
 	@tmp_env="$$(mktemp)"; \
 	printf '%s\n' \
-		'MEDIA_ROOT=/tmp' \
+		'MEDIA_MOVIES_PATH=/tmp/silo-media/movies' \
+		'MEDIA_TV_PATH=/tmp/silo-media/tv' \
+		'MEDIA_MUSIC_PATH=/tmp/silo-media/music' \
+		'MEDIA_AUDIOBOOKS_PATH=/tmp/silo-media/audiobooks' \
+		'MEDIA_EBOOKS_PATH=/tmp/silo-media/ebooks' \
+		'MEDIA_MANGA_PATH=/tmp/silo-media/manga' \
 		'POSTGRES_PASSWORD_FILE=./secrets/postgres_password' \
 		'SECRET_KEY_FILE=./secrets/silo_secret_key' > "$$tmp_env"; \
 	$(DOCKER) compose --env-file "$$tmp_env" config >/dev/null; \

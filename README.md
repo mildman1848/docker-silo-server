@@ -58,7 +58,12 @@ This project is **unofficial** and is not affiliated with Silo Media L.L.C. or t
 |---|---|---|
 | `./config` | `/config` | Persistent Silo app state: plugins, compatibility assets, covers, SQLite userdb if used |
 | `./transcode` | `/transcode` | Transient transcode output; mapped internally to `/tmp/silo-transcode` |
-| `/path/to/media` | `/media` | Read-only media library |
+| `${MEDIA_MOVIES_PATH}` | `/media/movies` | Read-only movies library |
+| `${MEDIA_TV_PATH}` | `/media/tv` | Read-only TV/shows library |
+| `${MEDIA_MUSIC_PATH}` | `/media/music` | Read-only music library |
+| `${MEDIA_AUDIOBOOKS_PATH}` | `/media/audiobooks` | Read-only audiobook library |
+| `${MEDIA_EBOOKS_PATH}` | `/media/ebooks` | Read-only ebook library |
+| `${MEDIA_MANGA_PATH}` | `/media/manga` | Read-only manga/comics library |
 
 The container prepares these internal paths as symlinks into `/config`:
 
@@ -75,7 +80,7 @@ The container prepares these internal paths as symlinks into `/config`:
 ```bash
 cp .env.example .env
 make secrets
-# edit MEDIA_ROOT in .env
+# edit MEDIA_*_PATH in .env if your media paths differ
 docker compose up -d
 ```
 
@@ -94,7 +99,12 @@ http://localhost:8090
 | `SECRET_KEY` / `FILE__SECRET_KEY` | yes | Master key for at-rest credential encryption. Back this up separately from DB dumps. Losing it makes encrypted secrets unrecoverable. |
 | `DATABASE_URL` | yes | PostgreSQL connection string. |
 | `REDIS_URL` | recommended | Redis connection string. |
-| `MEDIA_ROOT` | compose only | Host path to media library. |
+| `MEDIA_MOVIES_PATH` | compose only | Host path mounted as `/media/movies`. |
+| `MEDIA_TV_PATH` | compose only | Host path mounted as `/media/tv`. |
+| `MEDIA_MUSIC_PATH` | compose only | Host path mounted as `/media/music`. |
+| `MEDIA_AUDIOBOOKS_PATH` | compose only | Host path mounted as `/media/audiobooks`. |
+| `MEDIA_EBOOKS_PATH` | compose only | Host path mounted as `/media/ebooks`. |
+| `MEDIA_MANGA_PATH` | compose only | Host path mounted as `/media/manga`. |
 
 ## Database and cache images
 
@@ -108,6 +118,22 @@ CACHE_IMAGE=ghcr.io/mildman1848/valkey:9.0.4-mldm1
 The cache service is still named `redis` and Silo receives `REDIS_URL=redis://redis:6379`, because Valkey is Redis-protocol compatible and many applications use `redis` as the expected DNS name.
 
 Upstream Silo currently documents PostgreSQL 18 + pgvector. This packaging keeps the image selectable through `POSTGRES_IMAGE` so operators can switch back to `pgvector/pgvector:pg18` if upstream introduces a hard PostgreSQL 18 or pgvector requirement that the custom PostgreSQL 18 image cannot satisfy.
+
+
+## Media library paths
+
+The bundled Compose file mounts media categories separately and read-only. In the Silo admin UI, add libraries using the container paths, not the host paths:
+
+```text
+Movies:      /media/movies
+TV/Shows:    /media/tv
+Music:       /media/music
+Audiobooks:  /media/audiobooks
+Ebooks:      /media/ebooks
+Manga/Comics:/media/manga
+```
+
+On this homelab, the local `.env` can point these variables at the QNAP mount, for example `/mnt/nas-qnap/mediacenter/data/media/movies`. Ensure the NAS path is mounted on the Docker host before starting Compose.
 
 ## Docker secrets / `FILE__` variables
 
