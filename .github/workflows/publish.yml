@@ -15,28 +15,77 @@ permissions:
   packages: write
 
 jobs:
-  publish-ghcr:
+  build:
     if: github.event.inputs.push == 'true'
-    runs-on: ubuntu-latest
+    name: build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
-      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - name: Prepare platform metadata
+        id: platform
+        run: |
+          platform='${{ matrix.platform }}'
+          echo "platform_pair=${platform//\//-}" >> "$GITHUB_OUTPUT"
+      - name: Build and push digest
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ghcr.io/mildman1848/silo-server:git-881c968-mldm1
-            ghcr.io/mildman1848/silo-server:git-881c968
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,"name=ghcr.io/mildman1848/silo-server",push-by-digest=true,name-canonical=true,push=true
           build-args: |
             UPSTREAM_REF=881c96864bafec423f91438059b21b84a6f68686
             APP_VERSION=git-881c968
             IMAGE_REVISION=mldm1
             VERSION=git-881c968-mldm1
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest='${{ steps.build.outputs.digest }}'
+          touch "/tmp/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ steps.platform.outputs.platform_pair }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    if: github.event.inputs.push == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and push multi-platform manifest
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t ghcr.io/mildman1848/silo-server:git-881c968-mldm1 \
+            -t ghcr.io/mildman1848/silo-server:git-881c968 \
+            $(printf 'ghcr.io/mildman1848/silo-server@sha256:%s ' *)
+      - name: Inspect published image
+        run: docker buildx imagetools inspect ghcr.io/mildman1848/silo-server:git-881c968-mldm1
