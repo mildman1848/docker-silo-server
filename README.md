@@ -119,6 +119,71 @@ The cache service is still named `redis` and Silo receives `REDIS_URL=redis://re
 
 Upstream Silo currently documents PostgreSQL 18 + pgvector. This packaging keeps the image selectable through `POSTGRES_IMAGE` so operators can switch back to `pgvector/pgvector:pg18` if upstream introduces a hard PostgreSQL 18 or pgvector requirement that the custom PostgreSQL 18 image cannot satisfy.
 
+## Meilisearch catalog search
+
+The bundled Compose stack includes Meilisearch as an optional search backend service:
+
+```text
+MEILISEARCH_IMAGE=getmeili/meilisearch:v1.52.3
+MEILI_MASTER_KEY_FILE=./secrets/meili_master_key
+```
+
+`make secrets` creates `secrets/meili_master_key` with mode `0600` and without printing the value. The service is internal-only by default; no host port is published. Silo must still be switched from the default PostgreSQL search provider to Meilisearch in the Admin UI or API. In the Silo Admin settings use:
+
+| Setting key | Recommended value | Notes |
+|---|---|---|
+| `catalog.search.provider` | `meilisearch` | Default is `postgres`. |
+| `catalog.search.meilisearch.url` | `http://meilisearch:7700` | Compose service DNS name. |
+| `catalog.search.meilisearch.api_key` | value from `secrets/meili_master_key` | Store as Silo encrypted setting; do not commit it. |
+| `catalog.search.meilisearch.index` | `silo_media_items` | Upstream default. |
+| `catalog.search.meilisearch.matching_strategy` | `last` | Upstream default; use `all` only if stricter matching is desired. |
+
+After enabling Meilisearch, trigger the Silo catalog/search index rebuild from the Admin UI/tasks area if the UI exposes it for this upstream commit. Until the index is built, Silo intentionally falls back to PostgreSQL search.
+
+**Risk:** Meilisearch improves search quality and latency, but it is another persistent service to back up (`./data/meilisearch`) and monitor. PostgreSQL remains the source of truth; Meilisearch is rebuildable index data, not the canonical catalog database.
+
+## Trakt setup
+
+Silo has built-in Trakt watch-sync support in this upstream commit. The provider supports watched/progress import, watched/progress export, favorites, watchlist, and playback scrobbling.
+
+Setup flow:
+
+1. Create a Trakt API application at <https://trakt.tv/oauth/applications>.
+2. Store the generated Client ID and Client Secret in Silo Admin settings:
+
+   ```text
+   watchsync.trakt.client_id
+   watchsync.trakt.client_secret
+   ```
+
+3. Restart Silo after setting the Trakt Client ID. Upstream marks `watchsync.trakt.client_id` as restart-sensitive for collection browser wiring.
+4. For each Silo profile/user that should sync, start the Trakt connection in the Silo UI. Silo uses Trakt device OAuth: it requests a device code and the user authorizes it at Trakt.
+5. Run or schedule the Silo task `sync_watch_providers` if it is not already scheduled by the UI. The Admin Dashboard exposes Trakt activity metrics when configured.
+
+Keep Client Secret and OAuth tokens out of Compose files. Silo encrypts sensitive third-party credentials at rest using `SECRET_KEY`, so losing `SECRET_KEY` can make those credentials unrecoverable.
+
+## Plugins, SSO and LDAP/OIDC
+
+Upstream has a plugin runtime and official first-party plugin repositories for metadata, markers, and arr-autoscan. The public Silo org currently exposes these relevant repositories:
+
+- `silo-plugins` — official plugin catalog metadata
+- `silo-plugin-sdk` — public Go SDK / protobuf contracts
+- `silo-plugin-metadata-tmdb`
+- `silo-plugin-metadata-tvdb`
+- `silo-plugin-metadata-audiobook`
+- `silo-plugin-metadata-ebook`
+- `silo-plugin-metadata-manga`
+- `silo-plugin-markers-theintrodb`
+- `silo-plugin-autoscan-arr`
+
+The server code already supports `auth_provider.v1` plugin capabilities, including credential-style auth and OAuth-style `Sign in with X` flows with optional auto-provisioning. However, no official or obvious public Silo LDAP/OIDC/SSO plugin was found for this upstream commit.
+
+Recommendation for homelab SSO today:
+
+- **Pragmatic:** run Silo behind SWAG/Authelia for network-level access control, but keep Silo's own login as the application identity. This is not true SSO, but it reduces public exposure.
+- **Best practice later:** use or build a Silo auth-provider plugin for OIDC against Authelia/Authentik/Keycloak once the plugin contract and catalog stabilize. LDAP direct bind is less attractive than OIDC because it spreads directory credentials and makes MFA/session policy harder.
+- **Avoid for now:** patching Silo core for LDAP unless upstream SSO stalls. That creates a source fork we then have to nurse like a sickly demon hamster.
+
 
 ## Media library paths
 

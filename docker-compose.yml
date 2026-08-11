@@ -34,6 +34,32 @@ services:
       timeout: 3s
       retries: 20
 
+  meilisearch:
+    image: ${MEILISEARCH_IMAGE:-getmeili/meilisearch:v1.52.3}
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -euc
+      - |
+        if [ ! -s /run/secrets/meili_master_key ]; then
+          echo "meili_master_key secret is required" >&2
+          exit 1
+        fi
+        export MEILI_MASTER_KEY="$$(cat /run/secrets/meili_master_key)"
+        exec /bin/meilisearch
+    environment:
+      MEILI_ENV: ${MEILI_ENV:-production}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - ./data/meilisearch:/meili_data
+    secrets:
+      - meili_master_key
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:7700/health | grep -q available"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   silo:
     image: ${IMAGE_NAME:-ghcr.io/mildman1848/silo-server}:${IMAGE_TAG:-git-881c968-mldm1}
     restart: unless-stopped
@@ -108,9 +134,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      meilisearch:
+        condition: service_healthy
 
 secrets:
   silo_secret_key:
     file: ${SECRET_KEY_FILE:-./secrets/silo_secret_key}
   postgres_password:
     file: ${POSTGRES_PASSWORD_FILE:-./secrets/postgres_password}
+  meili_master_key:
+    file: ${MEILI_MASTER_KEY_FILE:-./secrets/meili_master_key}

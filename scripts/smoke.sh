@@ -6,6 +6,7 @@ IMAGE_NAME="${IMAGE_NAME:-ghcr.io/mildman1848/silo-server}"
 IMAGE_TAG="${IMAGE_TAG:-git-881c968-mldm1}"
 POSTGRES_IMAGE="${POSTGRES_IMAGE:-ghcr.io/mildman1848/postgresql:18.4-mldm4}"
 CACHE_IMAGE="${CACHE_IMAGE:-ghcr.io/mildman1848/valkey:9.0.4-mldm1}"
+MEILISEARCH_IMAGE="${MEILISEARCH_IMAGE:-getmeili/meilisearch:v1.52.3}"
 POSTGRES_USER="${POSTGRES_USER:-silo}"
 POSTGRES_DB="${POSTGRES_DB:-silo}"
 SMOKE_DIR="${SMOKE_DIR:-.tmp/smoke}"
@@ -32,7 +33,7 @@ printf 'smoke media placeholder\n' > "${SMOKE_DIR}/media/README.txt"
 python3 - <<'PY'
 import pathlib, secrets, string, os
 alphabet = string.ascii_letters + string.digits
-for name, length in [('silo_secret_key', 96), ('postgres_password', 48)]:
+for name, length in [('silo_secret_key', 96), ('postgres_password', 48), ('meili_master_key', 96)]:
     p = pathlib.Path('.tmp/smoke/secrets') / name
     if not p.exists():
         p.write_text(''.join(secrets.choice(alphabet) for _ in range(length)), encoding='utf-8')
@@ -72,6 +73,30 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+  meilisearch:
+    image: ${MEILISEARCH_IMAGE}
+    entrypoint:
+      - /bin/sh
+      - -euc
+      - |
+        if [ ! -s /run/secrets/meili_master_key ]; then
+          echo "meili_master_key secret is required" >&2
+          exit 1
+        fi
+        export MEILI_MASTER_KEY="\$(cat /run/secrets/meili_master_key)"
+        exec /bin/meilisearch
+    environment:
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - ./meilisearch:/meili_data
+    secrets:
+      - meili_master_key
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:7700/health | grep -q available"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
   silo:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
     environment:
@@ -103,11 +128,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      meilisearch:
+        condition: service_healthy
 secrets:
   silo_secret_key:
     file: ./secrets/silo_secret_key
   postgres_password:
     file: ./secrets/postgres_password
+  meili_master_key:
+    file: ./secrets/meili_master_key
 YAML
 
 ${DOCKER_BIN} compose -p "${PROJECT_NAME}" -f "${SMOKE_DIR}/compose.yml" up -d

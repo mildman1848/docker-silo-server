@@ -5,6 +5,7 @@ SHELL := /bin/bash
 IMAGE_NAME ?= ghcr.io/mildman1848/silo-server
 POSTGRES_IMAGE ?= ghcr.io/mildman1848/postgresql:18.4-mldm4
 CACHE_IMAGE ?= ghcr.io/mildman1848/valkey:9.0.4-mldm1
+MEILISEARCH_IMAGE ?= getmeili/meilisearch:v1.52.3
 UPSTREAM_REPO ?= https://github.com/Silo-Server/silo-server.git
 UPSTREAM_REF ?= 881c96864bafec423f91438059b21b84a6f68686
 APP_VERSION ?= git-881c968
@@ -26,6 +27,7 @@ info: version labels
 	@printf 'PostgreSQL database: %s\n' '$(POSTGRES_DB)'
 	@printf 'PostgreSQL image: %s\n' '$(POSTGRES_IMAGE)'
 	@printf 'Cache image: %s\n' '$(CACHE_IMAGE)'
+	@printf 'Meilisearch image: %s\n' '$(MEILISEARCH_IMAGE)'
 
 version:
 	@printf '%s\n' '$(VERSION)'
@@ -59,7 +61,8 @@ compose-config:
 		'MEDIA_EBOOKS_PATH=/tmp/silo-media/ebooks' \
 		'MEDIA_MANGA_PATH=/tmp/silo-media/manga' \
 		'POSTGRES_PASSWORD_FILE=./secrets/postgres_password' \
-		'SECRET_KEY_FILE=./secrets/silo_secret_key' > "$$tmp_env"; \
+		'SECRET_KEY_FILE=./secrets/silo_secret_key' \
+		'MEILI_MASTER_KEY_FILE=./secrets/meili_master_key' > "$$tmp_env"; \
 	$(DOCKER) compose --env-file "$$tmp_env" config >/dev/null; \
 	rm -f "$$tmp_env"
 
@@ -76,7 +79,7 @@ build:
 		.
 
 smoke: secrets
-	IMAGE_NAME='$(IMAGE_NAME)' IMAGE_TAG='$(VERSION)' POSTGRES_IMAGE='$(POSTGRES_IMAGE)' CACHE_IMAGE='$(CACHE_IMAGE)' POSTGRES_USER='$(POSTGRES_USER)' POSTGRES_DB='$(POSTGRES_DB)' DOCKER='$(DOCKER)' ./scripts/smoke.sh
+	IMAGE_NAME='$(IMAGE_NAME)' IMAGE_TAG='$(VERSION)' POSTGRES_IMAGE='$(POSTGRES_IMAGE)' CACHE_IMAGE='$(CACHE_IMAGE)' MEILISEARCH_IMAGE='$(MEILISEARCH_IMAGE)' POSTGRES_USER='$(POSTGRES_USER)' POSTGRES_DB='$(POSTGRES_DB)' DOCKER='$(DOCKER)' ./scripts/smoke.sh
 
 clean-smoke:
 	DOCKER='$(DOCKER)' ./scripts/smoke.sh clean

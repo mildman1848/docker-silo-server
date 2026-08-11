@@ -11,6 +11,7 @@ ALPHABET = string.ascii_letters + string.digits
 ITEMS = {
     "secrets/silo_secret_key": 96,
     "secrets/postgres_password": 48,
+    "secrets/meili_master_key": 96,
 }
 
 
