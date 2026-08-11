@@ -198,7 +198,7 @@ Ebooks:      /media/ebooks
 Manga/Comics:/media/manga
 ```
 
-On this homelab, the local `.env` can point these variables at the QNAP mount, for example `/mnt/nas-qnap/mediacenter/data/media/movies`. Ensure the NAS path is mounted on the Docker host before starting Compose.
+For NAS-backed media, point the local `.env` variables at the mounted host paths, for example `/mnt/media/movies`. Ensure the NAS path is actually mounted on the Docker host before starting Compose.
 
 ## Docker secrets / `FILE__` variables
 
