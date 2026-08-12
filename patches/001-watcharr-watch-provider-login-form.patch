@@ -1,0 +1,180 @@
+diff --git a/web/src/pages/settings/WatchProvidersSettings.tsx b/web/src/pages/settings/WatchProvidersSettings.tsx
+index 9366edb..d7ebcc3 100644
+--- a/web/src/pages/settings/WatchProvidersSettings.tsx
++++ b/web/src/pages/settings/WatchProvidersSettings.tsx
+@@ -213,26 +213,46 @@ function AuthCodeBlock({
+ }
+ 
+ function APIKeyBlock({
++  providerKey,
+   displayName,
+   pending,
+   onSubmit,
+   onCancel,
+ }: {
++  providerKey: string;
+   displayName: string;
+   pending: boolean;
+   onSubmit: (apiKey: string) => void;
+   onCancel: () => void;
+ }) {
++  const isWatcharr = providerKey === "plugin:10:watcharr" || providerKey.endsWith(":watcharr");
+   const [value, setValue] = useState("");
++  const [username, setUsername] = useState("");
++  const [password, setPassword] = useState("");
+   const trimmed = value.trim();
++  const canSubmit = isWatcharr
++    ? username.trim().length > 0 && password.length > 0
++    : trimmed.length > 0;
++
++  const handleSubmit = () => {
++    if (isWatcharr) {
++      onSubmit(JSON.stringify({ username: username.trim(), password }));
++      return;
++    }
++    onSubmit(trimmed);
++  };
+ 
+   return (
+     <div className="border-primary/30 bg-primary/5 rounded-xl border border-dashed p-4">
+       <div className="flex items-start justify-between gap-3">
+         <div className="min-w-0">
+-          <div className="text-sm font-medium">Paste your {displayName} API key</div>
++          <div className="text-sm font-medium">
++            {isWatcharr ? `Sign in to ${displayName}` : `Paste your ${displayName} API key`}
++          </div>
+           <div className="text-muted-foreground mt-0.5 text-xs leading-snug">
+-            Find it under your account settings on the {displayName} site.
++            {isWatcharr
++              ? "Enter your Watcharr username and password. Silo stores only the returned Watcharr token."
++              : `Find it under your account settings on the ${displayName} site.`}
+           </div>
+         </div>
+         <Button
+@@ -245,27 +265,66 @@ function APIKeyBlock({
+           <X className="h-4 w-4" />
+         </Button>
+       </div>
+-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+-        <Input
+-          type="password"
+-          autoComplete="off"
+-          spellCheck={false}
+-          placeholder="API key"
+-          value={value}
+-          onChange={(event) => setValue(event.target.value)}
+-          className="font-mono"
+-        />
+-        <Button
+-          type="button"
+-          size="sm"
+-          disabled={pending || trimmed.length === 0}
+-          onClick={() => onSubmit(trimmed)}
+-          className="sm:flex-none"
+-        >
+-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+-          Connect
+-        </Button>
+-      </div>
++      {isWatcharr ? (
++        <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
++          <div className="space-y-1.5">
++            <Label htmlFor={`watch-provider-${providerKey}-username`}>Username</Label>
++            <Input
++              id={`watch-provider-${providerKey}-username`}
++              type="text"
++              autoComplete="username"
++              spellCheck={false}
++              placeholder="Watcharr username"
++              value={username}
++              onChange={(event) => setUsername(event.target.value)}
++            />
++          </div>
++          <div className="space-y-1.5">
++            <Label htmlFor={`watch-provider-${providerKey}-password`}>Password</Label>
++            <Input
++              id={`watch-provider-${providerKey}-password`}
++              type="password"
++              autoComplete="current-password"
++              spellCheck={false}
++              placeholder="Watcharr password"
++              value={password}
++              onChange={(event) => setPassword(event.target.value)}
++            />
++          </div>
++          <Button
++            type="button"
++            size="sm"
++            disabled={pending || !canSubmit}
++            onClick={handleSubmit}
++            className="sm:flex-none"
++          >
++            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
++            Connect
++          </Button>
++        </div>
++      ) : (
++        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
++          <Input
++            type="password"
++            autoComplete="off"
++            spellCheck={false}
++            placeholder="API key"
++            value={value}
++            onChange={(event) => setValue(event.target.value)}
++            className="font-mono"
++          />
++          <Button
++            type="button"
++            size="sm"
++            disabled={pending || !canSubmit}
++            onClick={handleSubmit}
++            className="sm:flex-none"
++          >
++            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
++            Connect
++          </Button>
++        </div>
++      )}
+     </div>
+   );
+ }
+@@ -390,7 +449,7 @@ function WatchProviderCard({ providerKey }: { providerKey: string }) {
+   let statusLabel: string;
+   if (showAuth || showAPIKey) {
+     statusVariant = "pending";
+-    statusLabel = usesAPIKey ? "API key required" : "Activation pending";
++    statusLabel = usesAPIKey ? (providerKey.endsWith(":watcharr") ? "Login required" : "API key required") : "Activation pending";
+   } else if (connection.connected && hasError) {
+     statusVariant = "error";
+     statusLabel = "Sync error";
+@@ -404,14 +463,19 @@ function WatchProviderCard({ providerKey }: { providerKey: string }) {
+ 
+   const subtitleText = (() => {
+     if (showAuth) return "Waiting for you to enter the code below.";
+-    if (showAPIKey) return `Paste your ${displayName} API key to finish connecting.`;
++    if (showAPIKey)
++      return providerKey.endsWith(":watcharr")
++        ? "Enter your Watcharr username and password to finish connecting."
++        : `Paste your ${displayName} API key to finish connecting.`;
+     if (connection.connected) {
+       const username = connection.provider_username || displayName;
+       return `${username} · ${formatLastSync(connection, latestRun)}`;
+     }
+     if (!connection.credentials_configured) return "Server credentials required.";
+     if (usesAPIKey)
+-      return `Connect with your ${displayName} API key to import watch history and scrobble playback.`;
++      return providerKey.endsWith(":watcharr")
++        ? "Connect with your Watcharr username and password to import watched history."
++        : `Connect with your ${displayName} API key to import watch history and scrobble playback.`;
+     return "Connect to start importing watch history and scrobbling playback.";
+   })();
+ 
+@@ -548,6 +612,7 @@ function WatchProviderCard({ providerKey }: { providerKey: string }) {
+       {showAPIKey ? (
+         <div className="mt-4">
+           <APIKeyBlock
++            providerKey={providerKey}
+             displayName={displayName}
+             pending={connectAPIKey.isPending}
+             onSubmit={handleSubmitAPIKey}

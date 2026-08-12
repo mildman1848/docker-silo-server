@@ -4,8 +4,8 @@ ARG UPSTREAM_REPO=https://github.com/Silo-Server/silo-server.git
 ARG UPSTREAM_REF=881c96864bafec423f91438059b21b84a6f68686
 ARG LSIO_BASE_VERSION=bookworm
 ARG APP_VERSION=git-881c968
-ARG IMAGE_REVISION=mldm1
-ARG VERSION=git-881c968-mldm1
+ARG IMAGE_REVISION=mldm2
+ARG VERSION=git-881c968-mldm2
 
 FROM alpine/git:2.49.1 AS source
 ARG UPSTREAM_REPO
@@ -14,6 +14,11 @@ WORKDIR /src
 RUN git clone --filter=blob:none "${UPSTREAM_REPO}" . \
     && git fetch --depth=1 origin "${UPSTREAM_REF}" \
     && git checkout --detach "${UPSTREAM_REF}"
+COPY patches/ /patches/
+RUN set -eux; \
+    if find /patches -type f -name '*.patch' | grep -q .; then \
+      for patch_file in /patches/*.patch; do git apply "$patch_file"; done; \
+    fi
 
 FROM node:22-slim AS frontend
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate

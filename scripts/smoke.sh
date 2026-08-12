@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT_NAME="${PROJECT_NAME:-silo-smoke}"
 IMAGE_NAME="${IMAGE_NAME:-ghcr.io/mildman1848/silo-server}"
-IMAGE_TAG="${IMAGE_TAG:-git-881c968-mldm1}"
+IMAGE_TAG="${IMAGE_TAG:-git-881c968-mldm2}"
 POSTGRES_IMAGE="${POSTGRES_IMAGE:-ghcr.io/mildman1848/postgresql:18.4-mldm4}"
 CACHE_IMAGE="${CACHE_IMAGE:-ghcr.io/mildman1848/valkey:9.0.4-mldm1}"
 MEILISEARCH_IMAGE="${MEILISEARCH_IMAGE:-getmeili/meilisearch:v1.52.3}"

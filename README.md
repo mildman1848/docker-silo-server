@@ -23,7 +23,7 @@ git-<upstream-short-sha>-mldm<N>
 Current packaging version:
 
 ```text
-git-881c968-mldm1
+git-881c968-mldm2
 ```
 
 ## Important license and trademark notes

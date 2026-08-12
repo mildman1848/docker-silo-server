@@ -61,7 +61,7 @@ services:
       retries: 20
 
   silo:
-    image: ${IMAGE_NAME:-ghcr.io/mildman1848/silo-server}:${IMAGE_TAG:-git-881c968-mldm1}
+    image: ${IMAGE_NAME:-ghcr.io/mildman1848/silo-server}:${IMAGE_TAG:-git-881c968-mldm2}
     restart: unless-stopped
     environment:
       PUID: ${PUID:-1000}
