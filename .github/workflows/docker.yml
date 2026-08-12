@@ -22,8 +22,8 @@ env:
   IMAGE_NAME: silo-server
   UPSTREAM_REF: 881c96864bafec423f91438059b21b84a6f68686
   APP_VERSION: git-881c968
-  IMAGE_REVISION: mldm1
-  VERSION: git-881c968-mldm1
+  IMAGE_REVISION: mldm2
+  VERSION: git-881c968-mldm2
 
 jobs:
   build:
