@@ -34,6 +34,7 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       GITLAB_REGISTRY_USER: ${{ secrets.GITLAB_REGISTRY_USER }}
       GITLAB_REGISTRY_TOKEN: ${{ secrets.GITLAB_REGISTRY_TOKEN }}
+      GITLAB_REGISTRY_IMAGE: ${{ vars.GITLAB_REGISTRY_IMAGE }}
       CODEBERG_REGISTRY_USER: ${{ secrets.CODEBERG_REGISTRY_USER }}
       CODEBERG_REGISTRY_TOKEN: ${{ secrets.CODEBERG_REGISTRY_TOKEN }}
     strategy:
@@ -97,7 +98,7 @@ jobs:
               echo "docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
             fi
             if [[ -n "${GITLAB_REGISTRY_USER}" ]]; then
-              echo "registry.gitlab.com/${GITHUB_REPOSITORY_OWNER}/${IMAGE_NAME}"
+              echo "registry.gitlab.com/${GITLAB_REGISTRY_IMAGE:-${GITHUB_REPOSITORY_OWNER}/${GITHUB_REPOSITORY#*/}}"
             fi
             if [[ -n "${CODEBERG_REGISTRY_USER}" ]]; then
               echo "codeberg.org/${GITHUB_REPOSITORY_OWNER}/${IMAGE_NAME}"
@@ -149,6 +150,7 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       GITLAB_REGISTRY_USER: ${{ secrets.GITLAB_REGISTRY_USER }}
       GITLAB_REGISTRY_TOKEN: ${{ secrets.GITLAB_REGISTRY_TOKEN }}
+      GITLAB_REGISTRY_IMAGE: ${{ vars.GITLAB_REGISTRY_IMAGE }}
       CODEBERG_REGISTRY_USER: ${{ secrets.CODEBERG_REGISTRY_USER }}
       CODEBERG_REGISTRY_TOKEN: ${{ secrets.CODEBERG_REGISTRY_TOKEN }}
     steps:
